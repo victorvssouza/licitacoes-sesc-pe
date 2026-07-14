@@ -117,7 +117,6 @@
 
 <script>
 document.addEventListener("DOMContentLoaded", function() {
-  // Aponta para a API interna segura que criamos no seu WordPress
   const localApiUrl = '/wp-json/sesc/v1/licitacoes';
   const container = document.getElementById('sesc-licitacoes-container');
 
@@ -127,7 +126,6 @@ document.addEventListener("DOMContentLoaded", function() {
       return response.json();
     })
     .then(payload => {
-      // Converte a string Base64 enviada pelo PHP de volta em ArrayBuffer para a biblioteca XLSX ler
       const binaryString = atob(payload.base64_data);
       const len = binaryString.length;
       const bytes = new Uint8Array(len);
@@ -140,63 +138,20 @@ document.addEventListener("DOMContentLoaded", function() {
       const worksheet = workbook.Sheets[firstSheetName];
       const licitacoes = XLSX.utils.sheet_to_json(worksheet);
 
-      container.innerHTML = '';
-
-      if (licitacoes.length === 0) {
-        container.innerHTML = '<div class="sesc-loading">Nenhuma licitação encontrada na planilha.</div>';
-        return;
-      }
-
-/*      licitacoes.forEach(item => {
-        const statusValue = item.status || 'Pendente';
-        const statusClass = statusValue.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, '-');
-        
-        const cardHtml = `
-          <div class="sesc-licitacao-card">
-            <div class="sesc-card-header">
-              <span class="sesc-badge badge-${statusClass}">${statusValue}</span>
-              <h3 class="sesc-licitacao-titulo">${item.titulo || 'Sem Título'}</h3>
-            </div>
-            <div class="sesc-card-body">
-              <p class="sesc-licitacao-objeto"><strong>Objeto:</strong> ${item.objeto || 'Não informado'}</p>
-              <p class="sesc-licitacao-data"><strong>Abertura:</strong> ${item.data || 'Não informada'}</p>
-            </div>
-            <div class="sesc-card-footer">
-              <a href="${item.link_sharepoint || '#'}" target="_blank" class="sesc-btn-sharepoint">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
-                  <path d="M19 4H5c-1.11 0-2 .9-2 2v12c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 14H5V8h14v10z"/>
-                </svg>
-                Documentos no SharePoint
-              </a>
-              ${item.link_externo ? `
-                <a href="${item.link_externo}" target="_blank" class="sesc-btn-externo">Ir para Licitações-E (BB)</a>
-              ` : ''}
-            </div>
-          </div>
-        `;
-        container.innerHTML += cardHtml;
-      });
-    })
-    .catch(error => {
-      console.error('Erro:', error);
-      container.innerHTML = '<div class="sesc-loading">Erro ao carregar as informações das licitações.</div>';
-    });
-});
-*/
-
-// ... (mantenha o código anterior igual até a linha do licitacoes.forEach) ...
+      // PULO DO GATO: Criamos uma variável na memória para acumular o HTML purificado
+      let htmlFinal = ''; 
 
       licitacoes.forEach(item => {
-        // PULO DO GATO: Se a coluna 'publicado' não for 'Sim', ignora essa linha e vai para a próxima
+        // Validação estrita: Se não for 'sim', o script ignora na memória e pula pro próximo item
         if (!item.publicado || item.publicado.trim().toLowerCase() !== 'sim') {
-          return; // Ignora esta licitação (funciona como rascunho)
+          return; 
         }
 
-        // Daqui para baixo o código continua exatamente o mesmo...
         const statusValue = item.status || 'Pendente';
         const statusClass = statusValue.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, '-');
         
-        const cardHtml = `
+        // Acumula o card aprovado estritamente na memória do navegador
+        cardHtml = `
           <div class="sesc-licitacao-card">
             <div class="sesc-card-header">
               <span class="sesc-badge badge-${statusClass}">${statusValue}</span>
@@ -219,12 +174,15 @@ document.addEventListener("DOMContentLoaded", function() {
             </div>
           </div>
         `;
-        container.innerHTML += cardHtml;
+        htmlFinal += cardHtml;
       });
 
-      // Se depois de filtrar tudo o container continuar vazio
-      if (container.innerHTML === '') {
+      // Se após o filtro nenhum card sobrou, exibe mensagem de vazio
+      if (htmlFinal === '') {
         container.innerHTML = '<div class="sesc-loading">Nenhuma licitação publicada no momento.</div>';
+      } else {
+        // INJEÇÃO ÚNICA: Só substitui o "Carregando..." pelos cards aprovados de uma vez só!
+        container.innerHTML = htmlFinal; 
       }
     })
     .catch(error => {
