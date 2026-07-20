@@ -1,0 +1,614 @@
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+<div class="sesc-filtros-wrapper">
+  <div class="sesc-filtro-item busca-texto">
+    <label for="filtro-busca">Palavra-chave (Modalidade, Nº ou Objeto)</label>
+    <input type="text" id="filtro-busca" placeholder="Ex: Pregão Eletrônico 024, Lixeiras...">
+  </div>
+  
+  <div class="sesc-filtro-item filtro-select">
+    <label for="filtro-status">Situação</label>
+    <select id="filtro-status">
+      <option value="">Todas</option>
+    </select>
+  </div>
+
+  <div class="sesc-filtro-item filtro-select">
+    <label for="filtro-modalidade">Modalidade</label>
+    <select id="filtro-modalidade">
+      <option value="">Todas</option>
+    </select>
+  </div>
+
+  <div class="sesc-filtro-item filtro-ano">
+    <label for="filtro-ano">Ano</label>
+    <select id="filtro-ano">
+      <option value="">Todos</option>
+    </select>
+  </div>
+
+  <div class="sesc-filtro-item filtro-data">
+    <label for="filtro-data-inicio">De (Data Inicial)</label>
+    <input type="date" id="filtro-data-inicio">
+  </div>
+
+  <div class="sesc-filtro-item filtro-data">
+    <label for="filtro-data-fim">Até (Data Final)</label>
+    <input type="date" id="filtro-data-fim">
+  </div>
+  
+  <div class="sesc-filtro-item btn-limpar-wrapper">
+    <button id="btn-limpar-filtros" class="sesc-btn-limpar">Limpar Filtros</button>
+  </div>
+</div>
+
+<div id="sesc-contador-resultados" class="sesc-contador-resultados"></div>
+
+<div id="sesc-licitacoes-container" class="sesc-licitacoes-grid">
+  <div class="sesc-loading">Carregando portal de licitações...</div>
+</div>
+
+<div id="sesc-paginacao" class="sesc-paginacao-container"></div>
+
+<style>
+.sesc-filtros-wrapper {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+  background: #f8f9fa;
+  padding: 20px;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+  margin-bottom: 20px;
+  font-family: Arial, sans-serif;
+  align-items: flex-end;
+  justify-content: flex-start;
+}
+
+.sesc-filtro-item {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+}
+
+.sesc-filtro-item.busca-texto {
+  flex: 2 1 260px;
+  max-width: 380px;
+}
+
+.sesc-filtro-item.filtro-select {
+  flex: 1 1 160px;
+  max-width: 220px;
+}
+
+.sesc-filtro-item.filtro-ano {
+  flex: 1 1 90px;
+  max-width: 120px;
+}
+
+.sesc-filtro-item.filtro-data {
+  flex: 1 1 135px;
+  max-width: 160px;
+}
+
+.sesc-filtro-item.btn-limpar-wrapper {
+  flex: 0 0 auto;
+  min-width: 140px;
+}
+
+.sesc-filtro-item label {
+  font-size: 11px;
+  font-weight: bold;
+  color: #555;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.sesc-filtros-wrapper input, .sesc-filtros-wrapper select {
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s;
+  height: 42px;
+  box-sizing: border-box;
+  background-color: #fff;
+  width: 100%;
+}
+
+.sesc-filtros-wrapper input:focus, .sesc-filtros-wrapper select:focus {
+  border-color: #004a80;
+}
+
+.sesc-btn-limpar {
+  padding: 10px 15px;
+  background-color: #6c757d;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  font-weight: bold;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background 0.2s;
+  height: 42px;
+  width: 100%;
+}
+
+.sesc-btn-limpar:hover { background-color: #5a6268; }
+
+.sesc-contador-resultados {
+  font-family: Arial, sans-serif;
+  font-size: 14px;
+  color: #666;
+  margin-bottom: 15px;
+  font-weight: bold;
+}
+
+.sesc-licitacoes-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 20px;
+  font-family: Arial, sans-serif;
+  color: #333333;
+}
+
+.sesc-loading {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 40px;
+  font-size: 16px;
+  color: #666;
+}
+
+.sesc-licitacao-card {
+  background: #ffffff;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.sesc-licitacao-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
+}
+
+.sesc-card-header { margin-bottom: 12px; }
+
+.sesc-badge {
+  display: inline-block;
+  padding: 5px 10px;
+  font-size: 11px;
+  font-weight: bold;
+  text-transform: uppercase;
+  border-radius: 4px;
+  margin-bottom: 10px;
+}
+
+.badge-aguardando-abertura { background-color: #fff3cd; color: #856404; border: 1px solid #ffeeba; }
+.badge-em-andamento { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+.badge-finalizado { background-color: #e2e3e5; color: #383d41; border: 1px solid #d6d8db; }
+.badge-cancelado { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+.badge-pendente { background-color: #e2e3e5; color: #383d41; border: 1px solid #d6d8db; }
+
+.sesc-licitacao-titulo {
+  font-size: 17px;
+  font-weight: bold;
+  margin: 0;
+  color: #004a80;
+}
+
+.sesc-licitacao-objeto {
+  font-size: 14px;
+  line-height: 1.5;
+  margin-bottom: 12px;
+}
+
+.sesc-licitacao-meta {
+  font-size: 13px;
+  color: #666;
+  margin: 4px 0;
+}
+
+.sesc-card-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 15px;
+}
+
+.sesc-btn-sharepoint, .sesc-btn-externo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: bold;
+  text-decoration: none;
+  transition: background 0.2s;
+}
+
+.sesc-btn-sharepoint { background-color: #0078d4; color: #ffffff; }
+.sesc-btn-sharepoint:hover { background-color: #005a9e; }
+.sesc-btn-externo { background-color: #f4f4f4; color: #333; border: 1px solid #cccccc; }
+.sesc-btn-externo:hover { background-color: #e2e2e2; }
+
+.sesc-paginacao-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  margin-top: 35px;
+  font-family: Arial, sans-serif;
+}
+
+.sesc-page-btn {
+  padding: 8px 14px;
+  border: 1px solid #ccc;
+  background: #fff;
+  color: #333;
+  cursor: pointer;
+  border-radius: 4px;
+  font-weight: bold;
+  transition: all 0.2s;
+}
+
+.sesc-page-btn:hover:not(:disabled) {
+  background: #f0f0f0;
+  border-color: #909090;
+}
+
+.sesc-page-btn.active {
+  background: #004a80;
+  color: #fff;
+  border-color: #004a80;
+}
+
+.sesc-page-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+@media (max-width: 768px) {
+  .sesc-filtros-wrapper { 
+    flex-direction: column; 
+    align-items: stretch; 
+  }
+  .sesc-filtro-item.busca-texto,
+  .sesc-filtro-item.filtro-select,
+  .sesc-filtro-item.filtro-ano,
+  .sesc-filtro-item.filtro-data,
+  .sesc-filtro-item.btn-limpar-wrapper {
+    max-width: 100%;
+    width: 100%;
+    flex: 1 1 auto;
+  }
+}
+</style>
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+  // URL de exportação direta do Google Drive para arquivos binários .xlsx
+  const googleDriveUrl = 'https://docs.google.com/spreadsheets/d/14TmRUTcTqfjBz3220dfuEm4aMwe5XsIF/export?format=xlsx';
+  
+  const container = document.getElementById('sesc-licitacoes-container');
+  const paginacaoContainer = document.getElementById('sesc-paginacao');
+  const contadorContainer = document.getElementById('sesc-contador-resultados');
+  
+  const itensPorPagina = 6; 
+  let paginaAtual = 1;
+  
+  let todasLicitacoesValidas = [];
+  let licitacoesFiltradas = [];
+
+  const inputBusca = document.getElementById('filtro-busca');
+  const selectStatus = document.getElementById('filtro-status');
+  const selectModalidade = document.getElementById('filtro-modalidade');
+  const selectAno = document.getElementById('filtro-ano');
+  const inputDataInicio = document.getElementById('filtro-data-inicio');
+  const inputDataFim = document.getElementById('filtro-data-fim');
+  const btnLimpar = document.getElementById('btn-limpar-filtros');
+
+  function formatarDataBR(dataISO) {
+    if (!dataISO) return 'Não informada';
+    const partes = dataISO.split('-');
+    if (partes.length !== 3) return dataISO;
+    return `${partes[2]}/${partes[1]}/${partes[0]}`;
+  }
+
+  function tratarDataExcel(campoData) {
+    if (!campoData) return '';
+    if (typeof campoData === 'number') {
+      const dataObjeto = new Date(Math.round((campoData - 25569) * 86400 * 1000));
+      return dataObjeto.toISOString().split('T')[0];
+    }
+    if (typeof campoData === 'string') {
+      const ajustada = campoData.trim();
+      if (/^\d{4}-\d{2}-\d{2}$/.test(ajustada)) return ajustada;
+      if (/^\d{2}\/\d{2}\/\d{4}$/.test(ajustada)) {
+        const p = ajustada.split('/');
+        return `${p[2]}-${p[1]}-${p[0]}`;
+      }
+    }
+    return '';
+  }
+
+  function auditarDadosPlanilha(item, indexPlanilha) {
+    const camposObrigatorios = {
+      status: 'Situação/Status',
+      titulo: 'Título (Número da Licitação)',
+      objeto: 'Objeto',
+      data_abertura: 'Data de Abertura',
+      link_sharepoint: 'Link do SharePoint'
+    };
+    
+    let inconsistente = false;
+    let camposAusentes = [];
+
+    for (let campo in camposObrigatorios) {
+      if (!item[campo] || String(item[campo]).trim() === '') {
+        inconsistente = true;
+        camposAusentes.push(camposObrigatorios[campo]);
+      }
+    }
+
+    if (inconsistente) {
+      console.warn(
+        `⚠️ [Auditoria de Planilha] Sesc PE:\n` +
+        `Detectada linha com informações incompletas na planilha Excel!\n` +
+        `• Posição estimada (Linha Excel): ${indexPlanilha + 2}\n` +
+        `• Campos ausentes: [ ${camposAusentes.join(', ')} ]\n` +
+        `• Dados capturados: { modalidade: "${item.modalidade || 'N/D'}", nº: "${item.titulo || 'N/D'}" }`
+      );
+    }
+  }
+
+  function popularFiltrosDinamicos() {
+    const statusSet = new Set();
+    const modalidadesSet = new Set();
+    const anosSet = new Set();
+
+    todasLicitacoesValidas.forEach(item => {
+      if (item.status && String(item.status).trim() !== '') {
+        statusSet.add(String(item.status).trim());
+      }
+      if (item.modalidade && String(item.modalidade).trim() !== '') {
+        modalidadesSet.add(String(item.modalidade).trim());
+      }
+      if (item.data_abertura_formatada) {
+        const anoExtraido = item.data_abertura_formatada.split('-')[0];
+        if (anoExtraido && anoExtraido.length === 4) {
+          anosSet.add(anoExtraido);
+        }
+      }
+    });
+
+    Array.from(statusSet).sort().forEach(status => {
+      const option = document.createElement('option');
+      option.value = status;
+      option.textContent = status;
+      selectStatus.appendChild(option);
+    });
+
+    Array.from(modalidadesSet).sort().forEach(mod => {
+      const option = document.createElement('option');
+      option.value = mod;
+      option.textContent = mod;
+      selectModalidade.appendChild(option);
+    });
+
+    Array.from(anosSet).sort().reverse().forEach(ano => {
+      const option = document.createElement('option');
+      option.value = ano;
+      option.textContent = ano;
+      selectAno.appendChild(option);
+    });
+  }
+
+  // Faz a requisição dos dados binários diretamente do Google Drive
+  fetch(googleDriveUrl)
+    .then(response => {
+      if (!response.ok) throw new Error('Erro ao baixar o arquivo do Google Drive.');
+      return response.arrayBuffer(); // Lê a resposta estruturada em buffer binário
+    })
+    .then(buffer => {
+      // Processamento do SheetJS adaptado para ArrayBuffer de arquivos binários .xlsx
+      const workbook = XLSX.read(new Uint8Array(buffer), { type: 'array' });
+      const firstSheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[firstSheetName];
+      const rawData = XLSX.utils.sheet_to_json(worksheet);
+
+      todasLicitacoesValidas = rawData.filter((item, index) => {
+        if (item.published || (item.publicado && String(item.publicado).trim().toLowerCase() === 'sim')) {
+          auditarDadosPlanilha(item, index);
+          return true;
+        }
+        return false;
+      }).map(item => {
+        // Fallback caso as colunas venham em formato misto (data_abertura ou data_limite)
+        const campoDataRaw = item.data_abertura || item.data_limite || '';
+        item.data_abertura_formatada = tratarDataExcel(campoDataRaw);
+        
+        item.status = item.status ? String(item.status).trim() : 'Pendente';
+        item.modalidade = item.modalidade ? String(item.modalidade).trim() : '';
+        
+        const numLicitacao = item.titulo ? String(item.titulo).trim() : 'Sem Número';
+        const anoAbertura = item.data_abertura_formatada ? item.data_abertura_formatada.split('-')[0] : 'AAAA';
+        
+        item.titulo_completo = `${item.modalidade} nº ${numLicitacao}/${anoAbertura}`;
+
+        return item;
+      });
+
+      todasLicitacoesValidas.sort((a, b) => {
+        if (!a.data_abertura_formatada) return 1;
+        if (!b.data_abertura_formatada) return -1;
+        return new Date(b.data_abertura_formatada) - new Date(a.data_abertura_formatada);
+      });
+
+      licitacoesFiltradas = [...todasLicitacoesValidas];
+
+      popularFiltrosDinamicos();
+
+      inputBusca.addEventListener('input', aplicarFiltros);
+      selectStatus.addEventListener('change', aplicarFiltros);
+      selectModalidade.addEventListener('change', aplicarFiltros);
+      selectAno.addEventListener('change', aplicarFiltros);
+      inputDataInicio.addEventListener('change', aplicarFiltros);
+      inputDataFim.addEventListener('change', aplicarFiltros);
+      btnLimpar.addEventListener('click', limparFiltros);
+
+      renderizarPagina();
+    })
+    .catch(error => {
+      console.error('Erro na carga dos dados:', error);
+      container.innerHTML = '<div class="sesc-loading">Erro ao carregar o portal de licitações. Verifique o console.</div>';
+    });
+
+  function aplicarFiltros() {
+    const buscaText = inputBusca.value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    const statusSelected = selectStatus.value;
+    const modSelected = selectModalidade.value;
+    const anoSelected = selectAno.value;
+    const dataInicio = inputDataInicio.value; 
+    const dataFim = inputDataFim.value;     
+
+    licitacoesFiltradas = todasLicitacoesValidas.filter(item => {
+      const statusStr = item.status || '';
+      const modalidadeStr = item.modalidade || '';
+      
+      const tituloCompletoStr = (item.titulo_completo || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+      const objetoStr = (item.objeto || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
+      if (buscaText) {
+        if (!tituloCompletoStr.includes(buscaText) && !objetoStr.includes(buscaText)) return false;
+      }
+      
+      if (statusSelected && statusStr !== statusSelected) return false;
+      if (modSelected && modalidadeStr !== modSelected) return false;
+      
+      if (anoSelected) {
+        if (item.data_abertura_formatada) {
+          const anoExtraido = item.data_abertura_formatada.split('-')[0];
+          if (anoExtraido !== anoSelected) return false;
+        } else {
+          return false;
+        }
+      }
+      
+      if (item.data_abertura_formatada) {
+        if (dataInicio && item.data_abertura_formatada < dataInicio) return false;
+        if (dataFim && item.data_abertura_formatada > dataFim) return false;
+      } else if (dataInicio || dataFim) {
+        return false;
+      }
+
+      return true;
+    });
+
+    paginaAtual = 1; 
+    renderizarPagina();
+  }
+
+  function renderizarPagina() {
+    container.innerHTML = '';
+    paginacaoContainer.innerHTML = '';
+    
+    const totalItens = licitacoesFiltradas.length;
+    contadorContainer.innerText = totalItens === 1 ? "1 licitação encontrada" : `${totalItens} licitações encontradas`;
+
+    if (totalItens === 0) {
+      container.innerHTML = '<div class="sesc-loading">Nenhuma licitação corresponde aos filtros aplicados.</div>';
+      return;
+    }
+
+    const totalPaginas = Math.ceil(totalItens / itensPorPagina);
+    const indiceInicio = (paginaAtual - 1) * itensPorPagina;
+    const indiceFim = Math.min(indiceInicio + itensPorPagina, totalItens);
+    
+    const itensPaginados = licitacoesFiltradas.slice(indiceInicio, indiceFim);
+
+    let htmlCards = '';
+    itensPaginados.forEach(item => {
+      const statusValue = item.status || 'Pendente';
+      const statusClass = statusValue.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, '-');
+      
+      // Mapeamento dinâmico do link da documentação
+      const linkDoc = item.link_sharepoint || item.link_drive || '#';
+
+      htmlCards += `
+        <div class="sesc-licitacao-card">
+          <div class="sesc-card-header">
+            <span class="sesc-badge badge-${statusClass}">${statusValue}</span>
+            <h3 class="sesc-licitacao-titulo">${item.titulo_completo}</h3>
+          </div>
+          <div class="sesc-card-body">
+            <p class="sesc-licitacao-objeto"><strong>Objeto:</strong> ${item.objeto || 'Não informado'}</p>
+            <div class="sesc-licitacao-meta"><strong>Abertura:</strong> ${formatarDataBR(item.data_abertura_formatada)}</div>
+          </div>
+          <div class="sesc-card-footer">
+            <a href="${linkDoc}" target="_blank" class="sesc-btn-sharepoint">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                <path d="M19 4H5c-1.11 0-2 .9-2 2v12c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 14H5V8h14v10z"/>
+              </svg>
+              Documentação / Editais
+            </a>
+            ${item.link_externo && item.link_externo.trim() !== '' ? `
+              <a href="${item.link_externo}" target="_blank" class="sesc-btn-externo">Licitações-E (BB)</a>
+            ` : ''}
+          </div>
+        </div>
+      `;
+    });
+    container.innerHTML = htmlCards;
+
+    if (totalPaginas > 1) {
+      const btnAnterior = document.createElement('button');
+      btnAnterior.className = 'sesc-page-btn';
+      btnAnterior.innerText = '«';
+      btnAnterior.disabled = paginaAtual === 1;
+      btnAnterior.addEventListener('click', () => { paginaAtual--; renderizarPagina(); rolarParaTopo(); });
+      paginacaoContainer.appendChild(btnAnterior);
+
+      for (let i = 1; i <= totalPaginas; i++) {
+        const btnPagina = document.createElement('button');
+        btnPagina.className = `sesc-page-btn ${i === paginaAtual ? 'active' : ''}`;
+        btnPagina.innerText = i;
+        btnPagina.addEventListener('click', () => { paginaAtual = i; renderizarPagina(); rolarParaTopo(); });
+        paginacaoContainer.appendChild(btnPagina);
+      }
+
+      const btnProxima = document.createElement('button');
+      btnProxima.className = 'sesc-page-btn';
+      btnProxima.innerText = '»';
+      btnProxima.disabled = paginaAtual === totalPaginas;
+      btnProxima.addEventListener('click', () => { paginaAtual++; renderizarPagina(); rolarParaTopo(); });
+      paginacaoContainer.appendChild(btnProxima);
+    }
+  }
+
+  function limparFiltros() {
+    inputBusca.value = '';
+    selectStatus.value = '';
+    selectModalidade.value = '';
+    selectAno.value = '';
+    inputDataInicio.value = '';
+    inputDataFim.value = '';
+    licitacoesFiltradas = [...todasLicitacoesValidas];
+    paginaAtual = 1;
+    renderizarPagina();
+  }
+
+  function rolarParaTopo() {
+    container.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+});
+</script>
