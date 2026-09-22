@@ -3,12 +3,19 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 
 <div class="sesc-bi-dashboard">
-  <!-- Barra de Filtros Analíticos -->
+  <!-- Barra de Filtros Analíticos e Temporais -->
   <div class="sesc-bi-filtros-wrapper">
     <div class="sesc-bi-filtro-item">
-      <label for="bi-filtro-ano">Ano do Certame</label>
+      <label for="bi-filtro-ano">Ano</label>
       <select id="bi-filtro-ano">
         <option value="">Todos os anos</option>
+      </select>
+    </div>
+
+    <div class="sesc-bi-filtro-item">
+      <label for="bi-filtro-status">Situação</label>
+      <select id="bi-filtro-status">
+        <option value="">Todas as situações</option>
       </select>
     </div>
 
@@ -26,26 +33,44 @@
       </select>
     </div>
 
+    <div class="sesc-bi-filtro-item filtro-data">
+      <label for="bi-filtro-data-inicio">De (Data Inicial)</label>
+      <input type="date" id="bi-filtro-data-inicio">
+    </div>
+
+    <div class="sesc-bi-filtro-item filtro-data">
+      <label for="bi-filtro-data-fim">Até (Data Final)</label>
+      <input type="date" id="bi-filtro-data-fim">
+    </div>
+
     <div class="sesc-bi-filtro-item btn-wrapper">
       <button id="bi-btn-limpar" class="sesc-bi-btn-limpar" type="button">Redefinir Filtros</button>
     </div>
   </div>
 
-  <!-- Estado de Carregamento -->
+  <!-- Loading State -->
   <div id="bi-loading" class="sesc-bi-loading">
     <div class="sesc-bi-spinner"></div>
-    <p>Consolidando dados analíticos...</p>
+    <p>Consolidando inteligência de dados das licitações...</p>
   </div>
 
   <!-- Conteúdo Principal do Painel -->
   <div id="bi-conteudo" style="display: none;">
-    <!-- Cards de KPIs Alinhados às Cores Oficiais -->
+    <!-- Cards de KPIs Alinhados com os 5 Status e Ciclo Médio -->
     <div class="sesc-bi-kpis-grid">
       <div class="sesc-bi-card-kpi kpi-border-total">
         <div class="kpi-icone icone-total">📋</div>
         <div class="kpi-info">
-          <span class="kpi-label">Total Registrado</span>
+          <span class="kpi-label">Total Certames</span>
           <h3 id="kpi-total" class="kpi-valor">0</h3>
+        </div>
+      </div>
+
+      <div class="sesc-bi-card-kpi kpi-border-aguardando">
+        <div class="kpi-icone icone-aguardando">📢</div>
+        <div class="kpi-info">
+          <span class="kpi-label">Aguardando Abertura</span>
+          <h3 id="kpi-aguardando" class="kpi-valor">0</h3>
         </div>
       </div>
 
@@ -53,14 +78,14 @@
         <div class="kpi-icone icone-andamento">⏳</div>
         <div class="kpi-info">
           <span class="kpi-label">Em Andamento</span>
-          <h3 id="kpi-ativos" class="kpi-valor">0</h3>
+          <h3 id="kpi-andamento" class="kpi-valor">0</h3>
         </div>
       </div>
 
       <div class="sesc-bi-card-kpi kpi-border-finalizado">
         <div class="kpi-icone icone-finalizado">✅</div>
         <div class="kpi-info">
-          <span class="kpi-label">Finalizados / Homologados</span>
+          <span class="kpi-label">Finalizados / Homolog.</span>
           <h3 id="kpi-finalizados" class="kpi-valor">0</h3>
         </div>
       </div>
@@ -76,18 +101,23 @@
       <div class="sesc-bi-card-kpi kpi-border-tempo">
         <div class="kpi-icone icone-tempo">⏱️</div>
         <div class="kpi-info">
-          <span class="kpi-label">Ciclo Médio (Dias)</span>
+          <span class="kpi-label">Ciclo Médio</span>
           <h3 id="kpi-tempo-medio" class="kpi-valor">0</h3>
         </div>
       </div>
     </div>
 
-    <!-- Grid de Gráficos Analíticos -->
+    <!-- Dica de Usabilidade: Drill-Down -->
+    <div class="sesc-bi-dica-interativa">
+      💡 <strong>Dica de BI:</strong> Clique em qualquer fatia ou barra dos gráficos para filtrar todo o painel dinamicamente (Cross-Filtering).
+    </div>
+
+    <!-- Grid de Gráficos Analíticos com Cross-Filtering -->
     <div class="sesc-bi-charts-grid">
       <div class="sesc-bi-chart-card">
         <div class="chart-header">
           <h4>Distribuição por Situação</h4>
-          <span class="chart-subtitulo">Percentual e volume de certames por situação</span>
+          <span class="chart-subtitulo">Clique em uma fatia para filtrar por status</span>
         </div>
         <div class="chart-container">
           <canvas id="chartStatus"></canvas>
@@ -97,7 +127,7 @@
       <div class="sesc-bi-chart-card">
         <div class="chart-header">
           <h4>Volume por Modalidade</h4>
-          <span class="chart-subtitulo">Quantidade de processos por tipo de certame</span>
+          <span class="chart-subtitulo">Clique em uma barra para filtrar por modalidade</span>
         </div>
         <div class="chart-container">
           <canvas id="chartModalidade"></canvas>
@@ -107,7 +137,7 @@
       <div class="sesc-bi-chart-card">
         <div class="chart-header">
           <h4>Distribuição por Natureza</h4>
-          <span class="chart-subtitulo">Serviços, compras, obras ou engenharia</span>
+          <span class="chart-subtitulo">Clique em uma fatia para filtrar por natureza</span>
         </div>
         <div class="chart-container">
           <canvas id="chartNatureza"></canvas>
@@ -116,8 +146,8 @@
 
       <div class="sesc-bi-chart-card">
         <div class="chart-header">
-          <h4>Evolução Temporal das Aberturas</h4>
-          <span class="chart-subtitulo">Volume de certames abertos ao longo do ano</span>
+          <h4>Evolução Cronológica de Aberturas</h4>
+          <span class="chart-subtitulo">Frequência mensal das datas de abertura</span>
         </div>
         <div class="chart-container">
           <canvas id="chartTimeline"></canvas>
@@ -125,11 +155,11 @@
       </div>
     </div>
 
-    <!-- Matriz Consolidada Operacional -->
+    <!-- Matriz Consolidada com Links de Navegação Cruzada -->
     <div class="sesc-bi-tabela-card">
       <div class="chart-header">
         <h4>Resumo Consolidado (Modalidade x Natureza)</h4>
-        <span class="chart-subtitulo">Visão cruzada de andamento e taxa de homologação</span>
+        <span class="chart-subtitulo">Clique nos números com sublinhado para abrir a busca com os filtros pré-aplicados</span>
       </div>
       <div class="sesc-bi-table-responsive">
         <table class="sesc-bi-table">
@@ -138,6 +168,7 @@
               <th>Modalidade</th>
               <th>Natureza</th>
               <th style="text-align: center;">Total</th>
+              <th style="text-align: center;">Aguardando</th>
               <th style="text-align: center;">Em Andamento</th>
               <th style="text-align: center;">Finalizados</th>
               <th style="text-align: center;">Cancelados</th>
@@ -166,19 +197,24 @@
 .sesc-bi-filtros-wrapper {
   display: flex;
   flex-wrap: wrap;
-  gap: 15px;
+  gap: 12px;
   background: #f8f9fa;
-  padding: 20px;
+  padding: 18px;
   border-radius: 8px;
   border: 1px solid #e9ecef;
-  margin-bottom: 25px;
+  margin-bottom: 20px;
   align-items: flex-end;
 }
 
 .sesc-bi-filtro-item {
   display: flex;
   flex-direction: column;
-  flex: 1 1 200px;
+  flex: 1 1 160px;
+}
+
+.sesc-bi-filtro-item.filtro-data {
+  flex: 1 1 135px;
+  max-width: 160px;
 }
 
 .sesc-bi-filtro-item.btn-wrapper {
@@ -191,37 +227,42 @@
   color: #555;
   margin-bottom: 6px;
   text-transform: uppercase;
+  white-space: nowrap;
 }
 
-.sesc-bi-filtro-item select {
+.sesc-bi-filtro-item select,
+.sesc-bi-filtro-item input[type="date"] {
   height: 42px;
-  padding: 10px;
+  padding: 8px 10px;
   border: 1px solid #ccc;
   border-radius: 4px;
-  font-size: 14px;
+  font-size: 13px;
   outline: none;
   background-color: #fff;
   width: 100%;
   box-sizing: border-box;
+  font-family: Montserrat, sans-serif;
   transition: border-color 0.2s;
 }
 
-.sesc-bi-filtro-item select:focus {
+.sesc-bi-filtro-item select:focus,
+.sesc-bi-filtro-item input[type="date"]:focus {
   border-color: #004a80;
 }
 
 .sesc-bi-btn-limpar {
   height: 42px;
-  padding: 10px 18px;
+  padding: 10px 16px;
   background-color: #6c757d;
   color: #fff;
   border: none;
   border-radius: 4px;
   font-weight: bold;
-  font-size: 14px;
+  font-size: 13px;
   cursor: pointer;
   transition: background-color 0.2s;
   box-sizing: border-box;
+  white-space: nowrap;
 }
 
 .sesc-bi-btn-limpar:hover {
@@ -251,22 +292,33 @@
   to { transform: rotate(360deg); }
 }
 
-/* Cards de Métricas / KPIs */
+/* Dica de Drill-Down */
+.sesc-bi-dica-interativa {
+  background: #eaf2f9;
+  border-left: 4px solid #004a80;
+  padding: 10px 14px;
+  border-radius: 4px;
+  font-size: 12px;
+  color: #002d4d;
+  margin-bottom: 20px;
+}
+
+/* Cards de KPIs */
 .sesc-bi-kpis-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
-  gap: 16px;
-  margin-bottom: 25px;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 14px;
+  margin-bottom: 20px;
 }
 
 .sesc-bi-card-kpi {
   background: #ffffff;
   border: 1px solid #e0e0e0;
   border-radius: 8px;
-  padding: 18px;
+  padding: 16px;
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 12px;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.04);
   transition: transform 0.2s, box-shadow 0.2s;
   box-sizing: border-box;
@@ -277,30 +329,32 @@
   box-shadow: 0 6px 12px rgba(0, 0, 0, 0.08);
 }
 
-/* Bordas de destaque herdadas dos status */
+/* Bordas de destaque oficiais */
 .kpi-border-total { border-left: 5px solid #004a80; }
+.kpi-border-aguardando { border-left: 5px solid #b45100; }
 .kpi-border-andamento { border-left: 5px solid #856404; }
 .kpi-border-finalizado { border-left: 5px solid #155724; }
 .kpi-border-cancelado { border-left: 5px solid #721c24; }
 .kpi-border-tempo { border-left: 5px solid #1d63ed; }
 
 .kpi-icone {
-  width: 44px;
-  height: 44px;
+  width: 40px;
+  height: 40px;
   border-radius: 6px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 20px;
+  font-size: 18px;
   flex-shrink: 0;
 }
 
-/* Cores de fundo e texto idênticas às dos badges originais */
+/* Cores de fundo dos ícones baseadas nos badges */
 .icone-total { background-color: #eaf2f9; color: #004a80; }
+.icone-aguardando { background-color: #ffe4cd; color: #b45100; }
 .icone-andamento { background-color: #fff3cd; color: #856404; }
 .icone-finalizado { background-color: #d4edda; color: #155724; }
 .icone-cancelado { background-color: #f8d7da; color: #721c24; }
-.icone-tempo { background-color: #e8f0fe; color: #1d63ed; }
+.icone-tempo { background-color: #ede9fe; color: #1d63ed; }
 
 .kpi-info {
   display: flex;
@@ -308,7 +362,7 @@
 }
 
 .kpi-label {
-  font-size: 11px;
+  font-size: 10px;
   font-weight: bold;
   color: #666;
   text-transform: uppercase;
@@ -316,7 +370,7 @@
 }
 
 .kpi-valor {
-  font-size: 22px;
+  font-size: 20px;
   font-weight: bold;
   color: #004a80;
   margin: 4px 0 0 0;
@@ -361,7 +415,7 @@
   width: 100%;
 }
 
-/* Tabela Consolidada */
+/* Tabela Consolidada e Links Cruzados */
 .sesc-bi-table-responsive {
   width: 100%;
   overflow-x: auto;
@@ -394,6 +448,24 @@
   background-color: #f8f9fa;
 }
 
+.bi-link-cruzado {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+  font-weight: bold;
+  padding: 2px 6px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  display: inline-block;
+}
+
+.bi-link-cruzado:hover {
+  background-color: #eaf2f9;
+  color: #004a80 !important;
+  transform: scale(1.08);
+}
+
 .badge-bi {
   display: inline-block;
   padding: 4px 8px;
@@ -411,13 +483,24 @@
     grid-template-columns: 1fr;
   }
 }
+
+@media (max-width: 768px) {
+  .sesc-bi-filtro-item.filtro-data {
+    max-width: 100%;
+  }
+}
 </style>
 
 <script>
 document.addEventListener("DOMContentLoaded", function() {
   const googleDriveUrl = 'https://docs.google.com/spreadsheets/d/1Pde6F6z8h_k8USA84BjegdmPcfnS2un4M4u6XMwTTRs/export?format=xlsx';
 
-  // Mapa cromático oficial estrito (alinhado aos badges CSS do Sesc)
+  // Configuração da URL da página de busca do portal (ajuste o caminho se necessário)
+  const URL_PAGINA_BUSCA = window.location.pathname.includes('/licitacoes') 
+    ? window.location.pathname.replace(/\/bi.*|\/dashboard.*/i, '') 
+    : '/sobre-o-sesc/licitacoes/';
+
+  // Paleta oficial estrita idêntica aos badges CSS
   const CORES_STATUS = {
     'Aguardando abertura': { bg: '#ffe4cd', border: '#b45100', text: '#b45100' },
     'Em andamento':        { bg: '#fff3cd', border: '#856404', text: '#856404' },
@@ -428,9 +511,13 @@ document.addEventListener("DOMContentLoaded", function() {
 
   const loadingEl = document.getElementById('bi-loading');
   const conteudoEl = document.getElementById('bi-conteudo');
+  
   const selectAno = document.getElementById('bi-filtro-ano');
+  const selectStatus = document.getElementById('bi-filtro-status');
   const selectModalidade = document.getElementById('bi-filtro-modalidade');
   const selectNatureza = document.getElementById('bi-filtro-natureza');
+  const inputDataInicio = document.getElementById('bi-filtro-data-inicio');
+  const inputDataFim = document.getElementById('bi-filtro-data-fim');
   const btnLimpar = document.getElementById('bi-btn-limpar');
 
   let todasLicitacoes = [];
@@ -471,10 +558,11 @@ document.addEventListener("DOMContentLoaded", function() {
     return 0;
   }
 
+  // Identificação e isolamento preciso do status "Aguardando abertura"
   function padronizarNomeStatus(statusBruto) {
     const s = String(statusBruto || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
     if (s.includes('aguardando')) return 'Aguardando abertura';
-    if (s.includes('andamento') || s.includes('sessao') || s.includes('julgamento')) return 'Em andamento';
+    if (s.includes('andamento') || s.includes('sessao') || s.includes('julgamento') || s.includes('aberto')) return 'Em andamento';
     if (s.includes('finaliz') || s.includes('homolog') || s.includes('concl')) return 'Finalizado';
     if (s.includes('cancel') || s.includes('revog') || s.includes('desert') || s.includes('fracass')) return 'Cancelado';
     return 'Pendente';
@@ -491,11 +579,13 @@ document.addEventListener("DOMContentLoaded", function() {
 
   function popularFiltros() {
     const anos = new Set();
+    const statusSet = new Set();
     const modalidades = new Set();
     const naturezas = new Set();
 
     todasLicitacoes.forEach(item => {
       if (item.ano_licitacao) anos.add(item.ano_licitacao);
+      if (item.status_padrao) statusSet.add(item.status_padrao);
       if (item.modalidade) modalidades.add(item.modalidade);
       if (item.natureza) naturezas.add(item.natureza);
     });
@@ -505,6 +595,13 @@ document.addEventListener("DOMContentLoaded", function() {
       opt.value = ano;
       opt.textContent = ano;
       selectAno.appendChild(opt);
+    });
+
+    Array.from(statusSet).sort().forEach(st => {
+      const opt = document.createElement('option');
+      opt.value = st;
+      opt.textContent = st;
+      selectStatus.appendChild(opt);
     });
 
     Array.from(modalidades).sort((a, b) => a.localeCompare(b, 'pt-BR')).forEach(mod => {
@@ -559,25 +656,41 @@ document.addEventListener("DOMContentLoaded", function() {
         conteudoEl.style.display = 'block';
 
         selectAno.addEventListener('change', aplicarFiltros);
+        selectStatus.addEventListener('change', aplicarFiltros);
         selectModalidade.addEventListener('change', aplicarFiltros);
         selectNatureza.addEventListener('change', aplicarFiltros);
+        inputDataInicio.addEventListener('change', aplicarFiltros);
+        inputDataFim.addEventListener('change', aplicarFiltros);
         btnLimpar.addEventListener('click', limparFiltros);
       })
       .catch(err => {
-        console.error('Falha no carregamento dos dados:', err);
+        console.error('Falha na carga dos dados:', err);
         loadingEl.innerHTML = '<p style="color: #721c24;">Erro ao consolidar dados da planilha de licitações.</p>';
       });
   }
 
   function aplicarFiltros() {
     const ano = selectAno.value;
+    const status = selectStatus.value;
     const mod = selectModalidade.value;
     const nat = selectNatureza.value;
+    const dtIni = inputDataInicio.value;
+    const dtFim = inputDataFim.value;
 
     licitacoesFiltradas = todasLicitacoes.filter(item => {
       if (ano && String(item.ano_licitacao) !== String(ano)) return false;
+      if (status && item.status_padrao !== status) return false;
       if (mod && item.modalidade !== mod) return false;
       if (nat && item.natureza !== nat) return false;
+
+      // Filtro por Período de Datas
+      if (item.data_abertura_iso) {
+        if (dtIni && item.data_abertura_iso < dtIni) return false;
+        if (dtFim && item.data_abertura_iso > dtFim) return false;
+      } else if (dtIni || dtFim) {
+        return false;
+      }
+
       return true;
     });
 
@@ -586,8 +699,11 @@ document.addEventListener("DOMContentLoaded", function() {
 
   function limparFiltros() {
     selectAno.value = '';
+    selectStatus.value = '';
     selectModalidade.value = '';
     selectNatureza.value = '';
+    inputDataInicio.value = '';
+    inputDataFim.value = '';
     licitacoesFiltradas = [...todasLicitacoes];
     atualizarPainel();
   }
@@ -602,14 +718,16 @@ document.addEventListener("DOMContentLoaded", function() {
   }
 
   function atualizarKPIs() {
-    let ativos = 0;
+    let aguardando = 0;
+    let andamento = 0;
     let finalizados = 0;
     let cancelados = 0;
     let somaDias = 0;
     let contDias = 0;
 
     licitacoesFiltradas.forEach(item => {
-      if (item.status_padrao === 'Em andamento' || item.status_padrao === 'Aguardando abertura') ativos++;
+      if (item.status_padrao === 'Aguardando abertura') aguardando++;
+      if (item.status_padrao === 'Em andamento') andamento++;
       if (item.status_padrao === 'Finalizado') finalizados++;
       if (item.status_padrao === 'Cancelado') cancelados++;
 
@@ -620,17 +738,19 @@ document.addEventListener("DOMContentLoaded", function() {
     });
 
     document.getElementById('kpi-total').innerText = licitacoesFiltradas.length.toLocaleString('pt-BR');
-    document.getElementById('kpi-ativos').innerText = ativos.toLocaleString('pt-BR');
+    document.getElementById('kpi-aguardando').innerText = aguardando.toLocaleString('pt-BR');
+    document.getElementById('kpi-andamento').innerText = andamento.toLocaleString('pt-BR');
     document.getElementById('kpi-finalizados').innerText = finalizados.toLocaleString('pt-BR');
     document.getElementById('kpi-cancelados').innerText = cancelados.toLocaleString('pt-BR');
     document.getElementById('kpi-tempo-medio').innerText = contDias > 0 ? `${Math.round(somaDias / contDias)} d` : 'N/D';
   }
 
+  // Gráfico 1: Situação (Cross-Filtering habilitado)
   function renderizarGraficoStatus() {
     const contadores = {
-      'Finalizado': 0,
-      'Em andamento': 0,
       'Aguardando abertura': 0,
+      'Em andamento': 0,
+      'Finalizado': 0,
       'Cancelado': 0,
       'Pendente': 0
     };
@@ -640,7 +760,6 @@ document.addEventListener("DOMContentLoaded", function() {
       contadores[st] = (contadores[st] || 0) + 1;
     });
 
-    // Filtra apenas status com registros > 0
     const labels = Object.keys(contadores).filter(k => contadores[k] > 0);
     const data = labels.map(k => contadores[k]);
     const bgColors = labels.map(k => CORES_STATUS[k].bg);
@@ -663,6 +782,17 @@ document.addEventListener("DOMContentLoaded", function() {
       options: {
         responsive: true,
         maintainAspectRatio: false,
+        onHover: (event, chartElement) => {
+          event.native.target.style.cursor = chartElement[0] ? 'pointer' : 'default';
+        },
+        onClick: (event, elements) => {
+          if (elements.length > 0) {
+            const index = elements[0].index;
+            const clickedStatus = labels[index];
+            selectStatus.value = (selectStatus.value === clickedStatus) ? '' : clickedStatus;
+            aplicarFiltros();
+          }
+        },
         plugins: {
           legend: {
             position: 'bottom',
@@ -678,6 +808,7 @@ document.addEventListener("DOMContentLoaded", function() {
     });
   }
 
+  // Gráfico 2: Modalidade (Cross-Filtering habilitado)
   function renderizarGraficoModalidade() {
     const contadores = {};
     licitacoesFiltradas.forEach(item => {
@@ -708,6 +839,17 @@ document.addEventListener("DOMContentLoaded", function() {
         indexAxis: 'y',
         responsive: true,
         maintainAspectRatio: false,
+        onHover: (event, chartElement) => {
+          event.native.target.style.cursor = chartElement[0] ? 'pointer' : 'default';
+        },
+        onClick: (event, elements) => {
+          if (elements.length > 0) {
+            const index = elements[0].index;
+            const clickedModalidade = labels[index];
+            selectModalidade.value = (selectModalidade.value === clickedModalidade) ? '' : clickedModalidade;
+            aplicarFiltros();
+          }
+        },
         plugins: { legend: { display: false } },
         scales: {
           x: { grid: { color: '#f0f0f0' }, ticks: { stepSize: 1, font: { family: 'Montserrat' } } },
@@ -717,6 +859,7 @@ document.addEventListener("DOMContentLoaded", function() {
     });
   }
 
+  // Gráfico 3: Natureza (Cross-Filtering habilitado)
   function renderizarGraficoNatureza() {
     const contadores = {};
     licitacoesFiltradas.forEach(item => {
@@ -745,6 +888,17 @@ document.addEventListener("DOMContentLoaded", function() {
       options: {
         responsive: true,
         maintainAspectRatio: false,
+        onHover: (event, chartElement) => {
+          event.native.target.style.cursor = chartElement[0] ? 'pointer' : 'default';
+        },
+        onClick: (event, elements) => {
+          if (elements.length > 0) {
+            const index = elements[0].index;
+            const clickedNatureza = labels[index];
+            selectNatureza.value = (selectNatureza.value === clickedNatureza) ? '' : clickedNatureza;
+            aplicarFiltros();
+          }
+        },
         plugins: {
           legend: { position: 'bottom', labels: { boxWidth: 14, font: { family: 'Montserrat', size: 11 } } }
         }
@@ -752,6 +906,7 @@ document.addEventListener("DOMContentLoaded", function() {
     });
   }
 
+  // Gráfico 4: Timeline Mensal
   function renderizarGraficoTimeline() {
     const meses = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
     const contadores = new Array(12).fill(0);
@@ -797,6 +952,7 @@ document.addEventListener("DOMContentLoaded", function() {
     });
   }
 
+  // Tabela Consolidada com Navegação Cruzada via URL
   function renderizarTabelaConsolidada() {
     const corpo = document.getElementById('bi-tabela-corpo');
     corpo.innerHTML = '';
@@ -808,11 +964,20 @@ document.addEventListener("DOMContentLoaded", function() {
       const key = `${mod}__${nat}`;
 
       if (!mapa[key]) {
-        mapa[key] = { modalidade: mod, natureza: nat, total: 0, ativos: 0, finalizados: 0, cancelados: 0 };
+        mapa[key] = { 
+          modalidade: mod, 
+          natureza: nat, 
+          total: 0, 
+          aguardando: 0, 
+          andamento: 0, 
+          finalizados: 0, 
+          cancelados: 0 
+        };
       }
 
       mapa[key].total++;
-      if (item.status_padrao === 'Em andamento' || item.status_padrao === 'Aguardando abertura') mapa[key].ativos++;
+      if (item.status_padrao === 'Aguardando abertura') mapa[key].aguardando++;
+      if (item.status_padrao === 'Em andamento') mapa[key].andamento++;
       if (item.status_padrao === 'Finalizado') mapa[key].finalizados++;
       if (item.status_padrao === 'Cancelado') mapa[key].cancelados++;
     });
@@ -820,8 +985,19 @@ document.addEventListener("DOMContentLoaded", function() {
     const linhas = Object.values(mapa).sort((a, b) => b.total - a.total);
 
     if (linhas.length === 0) {
-      corpo.innerHTML = '<tr><td colspan="7" style="text-align: center; color: #666; padding: 20px;">Nenhum certame no filtro selecionado.</td></tr>';
+      corpo.innerHTML = '<tr><td colspan="8" style="text-align: center; color: #666; padding: 20px;">Nenhum certame no filtro selecionado.</td></tr>';
       return;
+    }
+
+    // Função auxiliar para gerar a URL com parâmetros pré-preenchidos
+    function criarLinkBusca(modalidade, status) {
+      const params = new URLSearchParams();
+      if (modalidade && modalidade !== 'Não informada') params.set('modalidade', modalidade);
+      if (status) params.set('status', status);
+      if (selectAno.value) params.set('ano', selectAno.value);
+      if (inputDataInicio.value) params.set('data_inicio', inputDataInicio.value);
+      if (inputDataFim.value) params.set('data_fim', inputDataFim.value);
+      return `${URL_PAGINA_BUSCA}?${params.toString()}`;
     }
 
     linhas.forEach(linha => {
@@ -834,10 +1010,21 @@ document.addEventListener("DOMContentLoaded", function() {
       tr.innerHTML = `
         <td><strong>${linha.modalidade}</strong></td>
         <td>${linha.natureza}</td>
-        <td style="text-align: center; font-weight: bold;">${linha.total}</td>
-        <td style="text-align: center; color: #856404; font-weight: bold;">${linha.ativos}</td>
-        <td style="text-align: center; color: #155724; font-weight: bold;">${linha.finalizados}</td>
-        <td style="text-align: center; color: #721c24; font-weight: bold;">${linha.cancelados}</td>
+        <td style="text-align: center;">
+          <a href="${criarLinkBusca(linha.modalidade, '')}" target="_blank" class="bi-link-cruzado" style="color: #004a80;" title="Ver todos os ${linha.total} certames na busca">${linha.total}</a>
+        </td>
+        <td style="text-align: center;">
+          ${linha.aguardando > 0 ? `<a href="${criarLinkBusca(linha.modalidade, 'Aguardando abertura')}" target="_blank" class="bi-link-cruzado" style="color: #b45100;" title="Ver ${linha.aguardando} certames aguardando abertura na busca">${linha.aguardando}</a>` : '0'}
+        </td>
+        <td style="text-align: center;">
+          ${linha.andamento > 0 ? `<a href="${criarLinkBusca(linha.modalidade, 'Em andamento')}" target="_blank" class="bi-link-cruzado" style="color: #856404;" title="Ver ${linha.andamento} certames em andamento na busca">${linha.andamento}</a>` : '0'}
+        </td>
+        <td style="text-align: center;">
+          ${linha.finalizados > 0 ? `<a href="${criarLinkBusca(linha.modalidade, 'Finalizado')}" target="_blank" class="bi-link-cruzado" style="color: #155724;" title="Ver ${linha.finalizados} certames finalizados na busca">${linha.finalizados}</a>` : '0'}
+        </td>
+        <td style="text-align: center;">
+          ${linha.cancelados > 0 ? `<a href="${criarLinkBusca(linha.modalidade, 'Cancelado')}" target="_blank" class="bi-link-cruzado" style="color: #721c24;" title="Ver ${linha.cancelados} certames cancelados na busca">${linha.cancelados}</a>` : '0'}
+        </td>
         <td style="text-align: center;"><span class="badge-bi ${badgeClass}">${taxa}%</span></td>
       `;
       corpo.appendChild(tr);
