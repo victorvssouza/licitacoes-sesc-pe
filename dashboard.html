@@ -1,0 +1,840 @@
+<!-- Bibliotecas externas: SheetJS (Leitura da planilha Excel) e Chart.js (Motor gráfico do BI) -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+<div class="sesc-bi-dashboard">
+  <!-- Barra de Filtros Analíticos -->
+  <div class="sesc-bi-filtros-wrapper">
+    <div class="sesc-bi-filtro-item">
+      <label for="bi-filtro-ano">Ano do Certame</label>
+      <select id="bi-filtro-ano">
+        <option value="">Todos os anos</option>
+      </select>
+    </div>
+
+    <div class="sesc-bi-filtro-item">
+      <label for="bi-filtro-modalidade">Modalidade</label>
+      <select id="bi-filtro-modalidade">
+        <option value="">Todas as modalidades</option>
+      </select>
+    </div>
+
+    <div class="sesc-bi-filtro-item">
+      <label for="bi-filtro-natureza">Natureza</label>
+      <select id="bi-filtro-natureza">
+        <option value="">Todas as naturezas</option>
+      </select>
+    </div>
+
+    <div class="sesc-bi-filtro-item btn-wrapper">
+      <button id="bi-btn-limpar" class="sesc-bi-btn-limpar" type="button">Redefinir Filtros</button>
+    </div>
+  </div>
+
+  <!-- Estado de Carregamento -->
+  <div id="bi-loading" class="sesc-bi-loading">
+    <div class="sesc-bi-spinner"></div>
+    <p>Compilando dados analíticos da planilha...</p>
+  </div>
+
+  <!-- Conteúdo Principal do Painel -->
+  <div id="bi-conteudo" style="display: none;">
+    <!-- Cards de Métricas / KPIs Operacionais -->
+    <div class="sesc-bi-kpis-grid">
+      <div class="sesc-bi-card-kpi">
+        <div class="kpi-icone icone-total">📋</div>
+        <div class="kpi-info">
+          <span class="kpi-label">Total de Processos</span>
+          <h3 id="kpi-total" class="kpi-valor">0</h3>
+        </div>
+      </div>
+
+      <div class="sesc-bi-card-kpi">
+        <div class="kpi-icone icone-andamento">⏳</div>
+        <div class="kpi-info">
+          <span class="kpi-label">Em Andamento / Abertos</span>
+          <h3 id="kpi-ativos" class="kpi-valor">0</h3>
+        </div>
+      </div>
+
+      <div class="sesc-bi-card-kpi">
+        <div class="kpi-icone icone-finalizados">✅</div>
+        <div class="kpi-info">
+          <span class="kpi-label">Homologados / Finalizados</span>
+          <h3 id="kpi-finalizados" class="kpi-valor">0</h3>
+        </div>
+      </div>
+
+      <div class="sesc-bi-card-kpi">
+        <div class="kpi-icone icone-tempo">⏱️</div>
+        <div class="kpi-info">
+          <span class="kpi-label">Tempo Médio de Tramitação</span>
+          <h3 id="kpi-tempo-medio" class="kpi-valor">0 dias</h3>
+        </div>
+      </div>
+    </div>
+
+    <!-- Grid de Gráficos Analíticos -->
+    <div class="sesc-bi-charts-grid">
+      <div class="sesc-bi-chart-card">
+        <div class="chart-header">
+          <h4>Distribuição por Situação</h4>
+          <span class="chart-subtitulo">Percentual de certames por status atual</span>
+        </div>
+        <div class="chart-container">
+          <canvas id="chartStatus"></canvas>
+        </div>
+      </div>
+
+      <div class="sesc-bi-chart-card">
+        <div class="chart-header">
+          <h4>Volume por Modalidade</h4>
+          <span class="chart-subtitulo">Total de certames realizados por categoria</span>
+        </div>
+        <div class="chart-container">
+          <canvas id="chartModalidade"></canvas>
+        </div>
+      </div>
+
+      <div class="sesc-bi-chart-card">
+        <div class="chart-header">
+          <h4>Distribuição por Natureza</h4>
+          <span class="chart-subtitulo">Classificação entre compras, serviços e obras</span>
+        </div>
+        <div class="chart-container">
+          <canvas id="chartNatureza"></canvas>
+        </div>
+      </div>
+
+      <div class="sesc-bi-chart-card">
+        <div class="chart-header">
+          <h4>Evolução de Certames (Aberturas por Mês)</h4>
+          <span class="chart-subtitulo">Frequência cronológica de publicação</span>
+        </div>
+        <div class="chart-container">
+          <canvas id="chartTimeline"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tabela Resumo Operacional de BI -->
+    <div class="sesc-bi-tabela-card">
+      <div class="chart-header">
+        <h4>Resumo Consolidado (Modalidade x Natureza)</h4>
+        <span class="chart-subtitulo">Matriz detalhada com quantidades e taxas de conclusão</span>
+      </div>
+      <div class="sesc-bi-table-responsive">
+        <table class="sesc-bi-table">
+          <thead>
+            <tr>
+              <th>Modalidade</th>
+              <th>Natureza</th>
+              <th style="text-align: center;">Total</th>
+              <th style="text-align: center;">Ativos</th>
+              <th style="text-align: center;">Finalizados</th>
+              <th style="text-align: center;">Taxa de Conclusão</th>
+            </tr>
+          </thead>
+          <tbody id="bi-tabela-corpo"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+.sesc-bi-dashboard {
+  font-family: Montserrat, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  color: #2b3a4a;
+  width: 100%;
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 10px 0 40px 0;
+  box-sizing: border-box;
+}
+
+/* Barra de Filtros */
+.sesc-bi-filtros-wrapper {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  background: #ffffff;
+  padding: 18px 24px;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+  margin-bottom: 25px;
+  align-items: flex-end;
+}
+
+.sesc-bi-filtro-item {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 200px;
+}
+
+.sesc-bi-filtro-item.btn-wrapper {
+  flex: 0 0 auto;
+}
+
+.sesc-bi-filtro-item label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #004a80;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.sesc-bi-filtro-item select {
+  height: 42px;
+  padding: 8px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font-size: 14px;
+  color: #334155;
+  background-color: #f8fafc;
+  outline: none;
+  transition: all 0.2s ease;
+  width: 100%;
+}
+
+.sesc-bi-filtro-item select:focus {
+  border-color: #004a80;
+  background-color: #ffffff;
+  box-shadow: 0 0 0 3px rgba(0, 74, 128, 0.1);
+}
+
+.sesc-bi-btn-limpar {
+  height: 42px;
+  padding: 0 20px;
+  background-color: #f1f5f9;
+  color: #475569;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.sesc-bi-btn-limpar:hover {
+  background-color: #e2e8f0;
+  color: #1e293b;
+}
+
+/* Loading Spinner */
+.sesc-bi-loading {
+  text-align: center;
+  padding: 60px 20px;
+  color: #64748b;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.sesc-bi-spinner {
+  width: 44px;
+  height: 44px;
+  border: 4px solid #e2e8f0;
+  border-top-color: #004a80;
+  border-radius: 50%;
+  animation: biSpin 0.9s linear infinite;
+  margin: 0 auto 16px auto;
+}
+
+@keyframes biSpin {
+  to { transform: rotate(360deg); }
+}
+
+/* Cards de KPIs */
+.sesc-bi-kpis-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 18px;
+  margin-bottom: 25px;
+}
+
+.sesc-bi-card-kpi {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 20px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.03);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.sesc-bi-card-kpi:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.06);
+}
+
+.kpi-icone {
+  width: 48px;
+  height: 48px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  flex-shrink: 0;
+}
+
+.icone-total { background-color: #e0f2fe; }
+.icone-andamento { background-color: #fef3c7; }
+.icone-finalizados { background-color: #dcfce7; }
+.icone-tempo { background-color: #ede9fe; }
+
+.kpi-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.kpi-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  line-height: 1.2;
+}
+
+.kpi-valor {
+  font-size: 24px;
+  font-weight: 800;
+  color: #002d4d;
+  margin: 4px 0 0 0;
+  line-height: 1.2;
+}
+
+/* Grid de Gráficos */
+.sesc-bi-charts-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+  margin-bottom: 25px;
+}
+
+.sesc-bi-chart-card, .sesc-bi-tabela-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 22px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.03);
+}
+
+.chart-header {
+  margin-bottom: 18px;
+}
+
+.chart-header h4 {
+  font-size: 16px;
+  font-weight: 700;
+  color: #002d4d;
+  margin: 0 0 4px 0;
+}
+
+.chart-subtitulo {
+  font-size: 12px;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.chart-container {
+  position: relative;
+  height: 280px;
+  width: 100%;
+}
+
+/* Tabela Analítica */
+.sesc-bi-table-responsive {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.sesc-bi-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 13px;
+}
+
+.sesc-bi-table th {
+  background-color: #f8fafc;
+  color: #475569;
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 11px;
+  letter-spacing: 0.5px;
+  padding: 12px 14px;
+  border-bottom: 2px solid #e2e8f0;
+}
+
+.sesc-bi-table td {
+  padding: 12px 14px;
+  border-bottom: 1px solid #edf2f7;
+  color: #334155;
+}
+
+.sesc-bi-table tr:hover td {
+  background-color: #f1f5f9;
+}
+
+.badge-conclusao {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.badge-alta { background-color: #dcfce7; color: #15803d; }
+.badge-media { background-color: #fef3c7; color: #b45309; }
+.badge-baixa { background-color: #fee2e2; color: #b91c1c; }
+
+@media (max-width: 900px) {
+  .sesc-bi-charts-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 600px) {
+  .sesc-bi-filtros-wrapper {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .sesc-bi-filtro-item.btn-wrapper {
+    width: 100%;
+  }
+  .sesc-bi-btn-limpar {
+    width: 100%;
+  }
+}
+</style>
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+  const googleDriveUrl = 'https://docs.google.com/spreadsheets/d/1Pde6F6z8h_k8USA84BjegdmPcfnS2un4M4u6XMwTTRs/export?format=xlsx';
+
+  const loadingEl = document.getElementById('bi-loading');
+  const conteudoEl = document.getElementById('bi-conteudo');
+  
+  const selectAno = document.getElementById('bi-filtro-ano');
+  const selectModalidade = document.getElementById('bi-filtro-modalidade');
+  const selectNatureza = document.getElementById('bi-filtro-natureza');
+  const btnLimpar = document.getElementById('bi-btn-limpar');
+
+  let todasLicitacoes = [];
+  let licitacoesFiltradas = [];
+
+  // Instâncias dos gráficos do Chart.js
+  let chartStatusInstance = null;
+  let chartModalidadeInstance = null;
+  let chartNaturezaInstance = null;
+  let chartTimelineInstance = null;
+
+  function tratarDataExcel(campoData) {
+    if (!campoData && campoData !== 0) return '';
+    if (typeof campoData === 'number') {
+      const dataObjeto = new Date(Math.round((campoData - 25569) * 86400 * 1000));
+      return !isNaN(dataObjeto.getTime()) ? dataObjeto.toISOString().split('T')[0] : '';
+    }
+    if (typeof campoData === 'string') {
+      const ajustada = campoData.trim();
+      if (/^\d{4}-\d{2}-\d{2}$/.test(ajustada)) return ajustada;
+      if (/^\d{2}\/\d{2}\/\d{4}$/.test(ajustada)) {
+        const p = ajustada.split('/');
+        return `${p[2]}-${p[1]}-${p[0]}`;
+      }
+    }
+    return '';
+  }
+
+  function extrairAno(item) {
+    const str = String(item.titulo || '');
+    const matchBarra = str.match(/\/(\d{4})/);
+    if (matchBarra) return parseInt(matchBarra[1], 10);
+
+    const matchAno = str.match(/\b(20\d{2})\b/);
+    if (matchAno) return parseInt(matchAno[1], 10);
+
+    if (item.data_abertura_iso) {
+      const anoIso = item.data_abertura_iso.split('-')[0];
+      if (anoIso && anoIso.length === 4) return parseInt(anoIso, 10);
+    }
+    return 0;
+  }
+
+  function calcularDiasTramitacao(dataAberturaISO, dataHomologacaoISO) {
+    if (!dataAberturaISO || !dataHomologacaoISO) return null;
+    const dIni = new Date(dataAberturaISO);
+    const dFim = new Date(dataHomologacaoISO);
+    if (isNaN(dIni.getTime()) || isNaN(dFim.getTime())) return null;
+    const diffMs = dFim - dIni;
+    const diffDias = Math.round(diffMs / (1000 * 60 * 60 * 24));
+    return diffDias >= 0 ? diffDias : null;
+  }
+
+  function popularFiltros() {
+    const anos = new Set();
+    const modalidades = new Set();
+    const naturezas = new Set();
+
+    todasLicitacoes.forEach(item => {
+      if (item.ano_licitacao) anos.add(item.ano_licitacao);
+      if (item.modalidade) modalidades.add(item.modalidade);
+      if (item.natureza) naturezas.add(item.natureza);
+    });
+
+    Array.from(anos).sort().reverse().forEach(ano => {
+      const opt = document.createElement('option');
+      opt.value = ano;
+      opt.textContent = ano;
+      selectAno.appendChild(opt);
+    });
+
+    Array.from(modalidades).sort((a, b) => a.localeCompare(b, 'pt-BR')).forEach(mod => {
+      const opt = document.createElement('option');
+      opt.value = mod;
+      opt.textContent = mod;
+      selectModalidade.appendChild(opt);
+    });
+
+    Array.from(naturezas).sort((a, b) => a.localeCompare(b, 'pt-BR')).forEach(nat => {
+      const opt = document.createElement('option');
+      opt.value = nat;
+      opt.textContent = nat;
+      selectNatureza.appendChild(opt);
+    });
+  }
+
+  function carregarDados() {
+    fetch(googleDriveUrl)
+      .then(res => {
+        if (!res.ok) throw new Error('Falha ao baixar arquivo da planilha.');
+        return res.arrayBuffer();
+      })
+      .then(buffer => {
+        const workbook = XLSX.read(new Uint8Array(buffer), { type: 'array' });
+        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+        const rawData = XLSX.utils.sheet_to_json(firstSheet);
+
+        todasLicitacoes = rawData.filter(item => {
+          return item.published || (item.publicado && String(item.publicado).trim().toLowerCase() === 'sim');
+        }).map(item => {
+          const rawAbertura = item.data_abertura || item.data_limite || '';
+          const rawHomolog = item.data_homologacao || item.homologacao || '';
+          
+          item.data_abertura_iso = tratarDataExcel(rawAbertura);
+          item.data_homologacao_iso = tratarDataExcel(rawHomolog);
+          item.status = item.status ? String(item.status).trim() : 'Pendente';
+          item.modalidade = item.modalidade ? String(item.modalidade).trim() : 'Não informada';
+          item.natureza = item.natureza ? String(item.natureza).trim() : 'Não especificada';
+          item.ano_licitacao = extrairAno(item);
+          item.dias_tramitacao = calcularDiasTramitacao(item.data_abertura_iso, item.data_homologacao_iso);
+
+          return item;
+        });
+
+        licitacoesFiltradas = [...todasLicitacoes];
+
+        popularFiltros();
+        atualizarDashboard();
+
+        loadingEl.style.display = 'none';
+        conteudoEl.style.display = 'block';
+
+        selectAno.addEventListener('change', aplicarFiltros);
+        selectModalidade.addEventListener('change', aplicarFiltros);
+        selectNatureza.addEventListener('change', aplicarFiltros);
+        btnLimpar.addEventListener('click', limparFiltros);
+      })
+      .catch(err => {
+        console.error('Erro na carga analítica:', err);
+        loadingEl.innerHTML = '<p style="color: #c53030;">Não foi possível carregar os dados analíticos do painel.</p>';
+      });
+  }
+
+  function aplicarFiltros() {
+    const anoSel = selectAno.value;
+    const modSel = selectModalidade.value;
+    const natSel = selectNatureza.value;
+
+    licitacoesFiltradas = todasLicitacoes.filter(item => {
+      if (anoSel && String(item.ano_licitacao) !== String(anoSel)) return false;
+      if (modSel && item.modalidade !== modSel) return false;
+      if (natSel && item.natureza !== natSel) return false;
+      return true;
+    });
+
+    atualizarDashboard();
+  }
+
+  function limparFiltros() {
+    selectAno.value = '';
+    selectModalidade.value = '';
+    selectNatureza.value = '';
+    licitacoesFiltradas = [...todasLicitacoes];
+    atualizarDashboard();
+  }
+
+  function normalizarStatus(status) {
+    const s = String(status || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+    if (s.includes('finaliz') || s.includes('homolog') || s.includes('concl')) return 'Finalizado';
+    if (s.includes('andamento') || s.includes('abertura') || s.includes('sessao') || s.includes('julga')) return 'Em Andamento';
+    if (s.includes('cancel') || s.includes('revog') || s.includes('desert') || s.includes('fracass')) return 'Cancelado/Revogado';
+    return 'Outros / Pendente';
+  }
+
+  function atualizarDashboard() {
+    atualizarKPIs();
+    renderizarGraficoStatus();
+    renderizarGraficoModalidade();
+    renderizarGraficoNatureza();
+    renderizarGraficoTimeline();
+    renderizarTabelaConsolidada();
+  }
+
+  function atualizarKPIs() {
+    const total = licitacoesFiltradas.length;
+    let ativos = 0;
+    let finalizados = 0;
+    let somaDias = 0;
+    let contDiasValidos = 0;
+
+    licitacoesFiltradas.forEach(item => {
+      const grupoStatus = normalizarStatus(item.status);
+      if (grupoStatus === 'Em Andamento') ativos++;
+      if (grupoStatus === 'Finalizado') finalizados++;
+
+      if (typeof item.dias_tramitacao === 'number') {
+        somaDias += item.dias_tramitacao;
+        contDiasValidos++;
+      }
+    });
+
+    document.getElementById('kpi-total').innerText = total.toLocaleString('pt-BR');
+    document.getElementById('kpi-ativos').innerText = ativos.toLocaleString('pt-BR');
+    document.getElementById('kpi-finalizados').innerText = finalizados.toLocaleString('pt-BR');
+    
+    if (contDiasValidos > 0) {
+      const media = Math.round(somaDias / contDiasValidos);
+      document.getElementById('kpi-tempo-medio').innerText = `${media} dias`;
+    } else {
+      document.getElementById('kpi-tempo-medio').innerText = 'N/D';
+    }
+  }
+
+  function renderizarGraficoStatus() {
+    const contadores = {};
+    licitacoesFiltradas.forEach(item => {
+      const status = item.status || 'Pendente';
+      contadores[status] = (contadores[status] || 0) + 1;
+    });
+
+    const labels = Object.keys(contadores);
+    const data = Object.values(contadores);
+    const cores = ['#1d63ed', '#10b981', '#f59e0b', '#ef4444', '#64748b', '#8b5cf6'];
+
+    if (chartStatusInstance) chartStatusInstance.destroy();
+
+    const ctx = document.getElementById('chartStatus').getContext('2d');
+    chartStatusInstance = new Chart(ctx, {
+      type: 'doughnut',
+      data: {
+        labels: labels,
+        datasets: [{
+          data: data,
+          backgroundColor: cores.slice(0, labels.length),
+          borderWidth: 2,
+          borderColor: '#ffffff'
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { position: 'bottom', labels: { boxWidth: 12, font: { family: 'Montserrat', size: 11 } } }
+        },
+        cutout: '65%'
+      }
+    });
+  }
+
+  function renderizarGraficoModalidade() {
+    const contadores = {};
+    licitacoesFiltradas.forEach(item => {
+      const mod = item.modalidade || 'Outras';
+      contadores[mod] = (contadores[mod] || 0) + 1;
+    });
+
+    const ordenados = Object.entries(contadores).sort((a, b) => b[1] - a[1]);
+    const labels = ordenados.map(o => o[0]);
+    const data = ordenados.map(o => o[1]);
+
+    if (chartModalidadeInstance) chartModalidadeInstance.destroy();
+
+    const ctx = document.getElementById('chartModalidade').getContext('2d');
+    chartModalidadeInstance = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: 'Licitações',
+          data: data,
+          backgroundColor: '#004a80',
+          borderRadius: 6
+        }]
+      },
+      options: {
+        indexAxis: 'y',
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false }
+        },
+        scales: {
+          x: { grid: { color: '#f1f5f9' }, ticks: { stepSize: 1 } },
+          y: { grid: { display: false } }
+        }
+      }
+    });
+  }
+
+  function renderizarGraficoNatureza() {
+    const contadores = {};
+    licitacoesFiltradas.forEach(item => {
+      const nat = item.natureza || 'Geral';
+      contadores[nat] = (contadores[nat] || 0) + 1;
+    });
+
+    const labels = Object.keys(contadores);
+    const data = Object.values(contadores);
+    const cores = ['#0078d4', '#00b7c3', '#5c2d91', '#004e8c', '#8764b8'];
+
+    if (chartNaturezaInstance) chartNaturezaInstance.destroy();
+
+    const ctx = document.getElementById('chartNatureza').getContext('2d');
+    chartNaturezaInstance = new Chart(ctx, {
+      type: 'pie',
+      data: {
+        labels: labels,
+        datasets: [{
+          data: data,
+          backgroundColor: cores.slice(0, labels.length),
+          borderWidth: 2,
+          borderColor: '#ffffff'
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { position: 'bottom', labels: { boxWidth: 12, font: { family: 'Montserrat', size: 11 } } }
+        }
+      }
+    });
+  }
+
+  function renderizarGraficoTimeline() {
+    const mesesNomes = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+    const contadoresMes = new Array(12).fill(0);
+
+    licitacoesFiltradas.forEach(item => {
+      if (item.data_abertura_iso) {
+        const partes = item.data_abertura_iso.split('-');
+        if (partes.length === 3) {
+          const indiceMes = parseInt(partes[1], 10) - 1;
+          if (indiceMes >= 0 && indiceMes < 12) {
+            contadoresMes[indiceMes]++;
+          }
+        }
+      }
+    });
+
+    if (chartTimelineInstance) chartTimelineInstance.destroy();
+
+    const ctx = document.getElementById('chartTimeline').getContext('2d');
+    chartTimelineInstance = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: mesesNomes,
+        datasets: [{
+          label: 'Aberturas Registradas',
+          data: contadoresMes,
+          borderColor: '#1d63ed',
+          backgroundColor: 'rgba(29, 99, 237, 0.08)',
+          fill: true,
+          tension: 0.35,
+          borderWidth: 3,
+          pointRadius: 4,
+          pointBackgroundColor: '#002d4d'
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false }
+        },
+        scales: {
+          y: { grid: { color: '#f1f5f9' }, ticks: { stepSize: 1, precision: 0 } },
+          x: { grid: { display: false } }
+        }
+      }
+    });
+  }
+
+  function renderizarTabelaConsolidada() {
+    const corpo = document.getElementById('bi-tabela-corpo');
+    corpo.innerHTML = '';
+
+    const agregador = {};
+
+    licitacoesFiltradas.forEach(item => {
+      const mod = item.modalidade || 'Outras';
+      const nat = item.natureza || 'Geral';
+      const chave = `${mod}__${nat}`;
+
+      if (!agregador[chave]) {
+        agregador[chave] = { modalidade: mod, natureza: nat, total: 0, ativos: 0, finalizados: 0 };
+      }
+
+      agregador[chave].total++;
+      const gStatus = normalizarStatus(item.status);
+      if (gStatus === 'Em Andamento') agregador[chave].ativos++;
+      if (gStatus === 'Finalizado') agregador[chave].finalizados++;
+    });
+
+    const lista = Object.values(agregador).sort((a, b) => b.total - a.total);
+
+    if (lista.length === 0) {
+      corpo.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #64748b; padding: 20px;">Nenhum registro para exibir.</td></tr>';
+      return;
+    }
+
+    lista.forEach(linha => {
+      const taxa = linha.total > 0 ? Math.round((linha.finalizados / linha.total) * 100) : 0;
+      let badgeClass = 'badge-baixa';
+      if (taxa >= 70) badgeClass = 'badge-alta';
+      else if (taxa >= 40) badgeClass = 'badge-media';
+
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><strong>${linha.modalidade}</strong></td>
+        <td>${linha.natureza}</td>
+        <td style="text-align: center; font-weight: bold;">${linha.total}</td>
+        <td style="text-align: center; color: #b45309;">${linha.ativos}</td>
+        <td style="text-align: center; color: #15803d;">${linha.finalizados}</td>
+        <td style="text-align: center;"><span class="badge-conclusao ${badgeClass}">${taxa}%</span></td>
+      `;
+      corpo.appendChild(tr);
+    });
+  }
+
+  carregarDados();
+});
+</script>
