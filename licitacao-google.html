@@ -319,6 +319,14 @@
   flex-direction: column;
 }
 
+/* Campo Natureza */
+.sesc-licitacao-natureza {
+  font-size: 13px;
+  color: #444;
+  margin-bottom: 10px;
+  line-height: 1.4;
+}
+
 .sesc-objeto-wrapper {
   margin-bottom: 12px;
   font-size: 14px;
@@ -534,7 +542,6 @@ document.addEventListener("DOMContentLoaded", function() {
     return '';
   }
 
-  // Extrai o ano contido diretamente no título (ex: "001/2026" -> 2026)
   function extrairAnoTitulo(item) {
     const str = String(item.titulo || '');
     const matchBarra = str.match(/\/(\d{4})/);
@@ -551,7 +558,6 @@ document.addEventListener("DOMContentLoaded", function() {
     return 0;
   }
 
-  // Extrai o número do certame antes da barra (ex: "024/2026" -> 24)
   function extrairNumeroTitulo(item) {
     const str = String(item.titulo || '');
     const matchAntesBarra = str.match(/(\d+)\s*\//);
@@ -561,7 +567,6 @@ document.addEventListener("DOMContentLoaded", function() {
     return digitos ? parseInt(digitos[0], 10) : 0;
   }
 
-  // Prioridade das modalidades: 1. Pregão | 2. CC/Concorrência | 3. Leilão | 4+. Outras modalidades
   function obterPrioridadeModalidade(modalidade) {
     const m = String(modalidade || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
     if (m.includes('pregao')) return 1;
@@ -623,7 +628,6 @@ document.addEventListener("DOMContentLoaded", function() {
       selectStatus.appendChild(option);
     });
 
-    // Ordena as modalidades no filtro pela mesma regra de prioridade
     Array.from(modalidadesSet).sort((a, b) => {
       const pA = obterPrioridadeModalidade(a);
       const pB = obterPrioridadeModalidade(b);
@@ -665,13 +669,19 @@ document.addEventListener("DOMContentLoaded", function() {
         const campoDataRaw = item.data_abertura || item.data_limite || '';
         item.data_abertura_formatada = tratarDataExcel(campoDataRaw);
         
+        // Formatações opcionais: Homologação e Última Atualização
+        const campoHomologacaoRaw = item.data_homologacao || item.homologacao || '';
+        item.data_homologacao_formatada = formatarDataExibicaoGeral(campoHomologacaoRaw);
+
         const campoAtualizacaoRaw = item.ultima_atualizacao || item.data_atualizacao || '';
         item.ultima_atualizacao_formatada = formatarDataExibicaoGeral(campoAtualizacaoRaw);
+
+        // Campo Natureza (Compra, Serviço, etc.)
+        item.natureza = item.natureza ? String(item.natureza).trim() : '';
 
         item.status = item.status ? String(item.status).trim() : 'Pendente';
         item.modalidade = item.modalidade ? String(item.modalidade).trim() : '';
         
-        // Agora o título vem como "001/2026" diretamente da planilha
         const tituloBruto = item.titulo ? String(item.titulo).trim() : 'Sem Número';
         item.ano_licitacao = extrairAnoTitulo(item);
 
@@ -684,10 +694,7 @@ document.addEventListener("DOMContentLoaded", function() {
         return item;
       });
 
-      // Ordenação: 
-      // 1º Prioridade Modalidade (Pregão -> CC -> Leilão -> Outras)
-      // 2º Modalidade alfabética para empates de categoria
-      // 3º Dentro da modalidade: MAIS RECENTE PRIMEIRO (Ano decrescente e Número decrescente)
+      // Ordenação prioritária
       todasLicitacoesValidas.sort((a, b) => {
         const prioA = obterPrioridadeModalidade(a.modalidade);
         const prioB = obterPrioridadeModalidade(b.modalidade);
@@ -756,9 +763,10 @@ document.addEventListener("DOMContentLoaded", function() {
       
       const tituloCompletoStr = (item.titulo_completo || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
       const objetoStr = (item.objeto || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+      const naturezaStr = (item.natureza || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 
       if (buscaText) {
-        if (!tituloCompletoStr.includes(buscaText) && !objetoStr.includes(buscaText)) return false;
+        if (!tituloCompletoStr.includes(buscaText) && !objetoStr.includes(buscaText) && !naturezaStr.includes(buscaText)) return false;
       }
       
       if (statusSelected && statusStr !== statusSelected) return false;
@@ -828,6 +836,11 @@ document.addEventListener("DOMContentLoaded", function() {
         `;
       }
 
+      // Linha opcional de Natureza (entre o título e o objeto)
+      const htmlNatureza = item.natureza ? `
+        <div class="sesc-licitacao-natureza"><strong>Natureza:</strong> ${item.natureza}</div>
+      ` : '';
+
       const limiteCaracteres = 130;
       const textoObjeto = item.objeto || 'Não informado';
       let htmlObjeto = '';
@@ -848,6 +861,11 @@ document.addEventListener("DOMContentLoaded", function() {
           </div>
         `;
       }
+
+      // Metadados opcionais (Homologação e Última Atualização)
+      const htmlHomologacao = item.data_homologacao_formatada ? `
+        <div class="sesc-licitacao-meta"><strong>Homologação:</strong> ${item.data_homologacao_formatada}</div>
+      ` : '';
 
       const htmlUltimaAtualizacao = item.ultima_atualizacao_formatada ? `
         <div class="sesc-licitacao-meta"><strong>Última atualização:</strong> ${item.ultima_atualizacao_formatada}</div>
@@ -876,8 +894,10 @@ document.addEventListener("DOMContentLoaded", function() {
             <h3 class="sesc-licitacao-titulo">${item.titulo_completo}</h3>
           </div>
           <div class="sesc-card-body">
+            ${htmlNatureza}
             ${htmlObjeto}
             <div class="sesc-licitacao-meta"><strong>Abertura:</strong> ${formatarDataBR(item.data_abertura_formatada)}</div>
+            ${htmlHomologacao}
             ${htmlUltimaAtualizacao}
           </div>
           ${htmlFooter}
