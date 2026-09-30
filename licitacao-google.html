@@ -1,6 +1,6 @@
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
-<!-- Seção: Processos Anteriores (Reposicionado no topo) -->
+<!-- Seção: Processos Anteriores -->
 <div class="sesc-processos-anteriores">
   <h3 class="sesc-processos-titulo">Processos anteriores</h3>
   <div class="sesc-processos-botoes">
@@ -33,6 +33,14 @@
   <div class="sesc-filtro-item filtro-select">
     <label for="filtro-modalidade">Modalidade</label>
     <select id="filtro-modalidade">
+      <option value="">Todas</option>
+    </select>
+  </div>
+
+  <!-- Filtro: Natureza -->
+  <div class="sesc-filtro-item filtro-select">
+    <label for="filtro-natureza">Natureza</label>
+    <select id="filtro-natureza">
       <option value="">Todas</option>
     </select>
   </div>
@@ -140,8 +148,8 @@
 }
 
 .sesc-filtro-item.filtro-select {
-  flex: 1 1 160px;
-  max-width: 220px;
+  flex: 1 1 150px;
+  max-width: 200px;
 }
 
 .sesc-filtro-item.filtro-ano {
@@ -319,7 +327,6 @@
   flex-direction: column;
 }
 
-/* Campo Natureza */
 .sesc-licitacao-natureza {
   font-size: 13px;
   color: #444;
@@ -489,6 +496,7 @@ document.addEventListener("DOMContentLoaded", function() {
   const inputBusca = document.getElementById('filtro-busca');
   const selectStatus = document.getElementById('filtro-status');
   const selectModalidade = document.getElementById('filtro-modalidade');
+  const selectNatureza = document.getElementById('filtro-natureza');
   const selectAno = document.getElementById('filtro-ano');
   const inputDataInicio = document.getElementById('filtro-data-inicio');
   const inputDataFim = document.getElementById('filtro-data-fim');
@@ -575,6 +583,13 @@ document.addEventListener("DOMContentLoaded", function() {
     return 4;
   }
 
+  // Unifica pregão eletrônico e presencial sob o grupo "Pregões" para exibição no grid
+  function obterGrupoExibicao(modalidade) {
+    const m = String(modalidade || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+    if (m.includes('pregao')) return 'Pregões';
+    return String(modalidade || '').trim() || 'Outras Modalidades';
+  }
+
   function auditarDadosPlanilha(item, indexPlanilha) {
     const camposObrigatorios = {
       status: 'Situação/Status',
@@ -607,6 +622,7 @@ document.addEventListener("DOMContentLoaded", function() {
   function popularFiltrosDinamicos() {
     const statusSet = new Set();
     const modalidadesSet = new Set();
+    const naturezasSet = new Set();
     const anosSet = new Set();
 
     todasLicitacoesValidas.forEach(item => {
@@ -615,6 +631,9 @@ document.addEventListener("DOMContentLoaded", function() {
       }
       if (item.modalidade && String(item.modalidade).trim() !== '') {
         modalidadesSet.add(String(item.modalidade).trim());
+      }
+      if (item.natureza && String(item.natureza).trim() !== '') {
+        naturezasSet.add(String(item.natureza).trim());
       }
       if (item.ano_licitacao) {
         anosSet.add(String(item.ano_licitacao));
@@ -628,16 +647,38 @@ document.addEventListener("DOMContentLoaded", function() {
       selectStatus.appendChild(option);
     });
 
-    Array.from(modalidadesSet).sort((a, b) => {
-      const pA = obterPrioridadeModalidade(a);
-      const pB = obterPrioridadeModalidade(b);
-      if (pA !== pB) return pA - pB;
-      return a.localeCompare(b, 'pt-BR');
-    }).forEach(mod => {
+    // Verifica se há pregões na planilha para injetar a opção unificada "Pregões"
+    const existePregao = Array.from(modalidadesSet).some(m => 
+      m.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").includes("pregao")
+    );
+
+    if (existePregao) {
+      const optionPregoes = document.createElement('option');
+      optionPregoes.value = 'Pregões';
+      optionPregoes.textContent = 'Pregões';
+      selectModalidade.appendChild(optionPregoes);
+    }
+
+    // Modalidades específicas individuais (Pregão Eletrônico, Pregão Presencial, Concorrência, etc.)
+    Array.from(modalidadesSet)
+      .filter(m => m.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim() !== "pregoes")
+      .sort((a, b) => {
+        const pA = obterPrioridadeModalidade(a);
+        const pB = obterPrioridadeModalidade(b);
+        if (pA !== pB) return pA - pB;
+        return a.localeCompare(b, 'pt-BR');
+      }).forEach(mod => {
+        const option = document.createElement('option');
+        option.value = mod;
+        option.textContent = mod;
+        selectModalidade.appendChild(option);
+      });
+
+    Array.from(naturezasSet).sort((a, b) => a.localeCompare(b, 'pt-BR')).forEach(nat => {
       const option = document.createElement('option');
-      option.value = mod;
-      option.textContent = mod;
-      selectModalidade.appendChild(option);
+      option.value = nat;
+      option.textContent = nat;
+      selectNatureza.appendChild(option);
     });
 
     Array.from(anosSet).sort().reverse().forEach(ano => {
@@ -669,16 +710,13 @@ document.addEventListener("DOMContentLoaded", function() {
         const campoDataRaw = item.data_abertura || item.data_limite || '';
         item.data_abertura_formatada = tratarDataExcel(campoDataRaw);
         
-        // Formatações opcionais: Homologação e Última Atualização
         const campoHomologacaoRaw = item.data_homologacao || item.homologacao || '';
         item.data_homologacao_formatada = formatarDataExibicaoGeral(campoHomologacaoRaw);
 
         const campoAtualizacaoRaw = item.ultima_atualizacao || item.data_atualizacao || '';
         item.ultima_atualizacao_formatada = formatarDataExibicaoGeral(campoAtualizacaoRaw);
 
-        // Campo Natureza (Compra, Serviço, etc.)
         item.natureza = item.natureza ? String(item.natureza).trim() : '';
-
         item.status = item.status ? String(item.status).trim() : 'Pendente';
         item.modalidade = item.modalidade ? String(item.modalidade).trim() : '';
         
@@ -694,7 +732,11 @@ document.addEventListener("DOMContentLoaded", function() {
         return item;
       });
 
-      // Ordenação prioritária
+      // Ordenação: 1º Prioridade Macro (Pregões -> CC -> Leilão -> Outros)
+      //            2º Nome do Grupo Unificado
+      //            3º Ano decrescente (2026, 2025...)
+      //            4º Número da licitação decrescente
+      //            5º Data de abertura decrescente
       todasLicitacoesValidas.sort((a, b) => {
         const prioA = obterPrioridadeModalidade(a.modalidade);
         const prioB = obterPrioridadeModalidade(b.modalidade);
@@ -702,11 +744,11 @@ document.addEventListener("DOMContentLoaded", function() {
           return prioA - prioB;
         }
 
-        const modA = String(a.modalidade || '').trim();
-        const modB = String(b.modalidade || '').trim();
-        const modDiff = modA.localeCompare(modB, 'pt-BR', { sensitivity: 'base' });
-        if (modDiff !== 0) {
-          return modDiff;
+        const grupoA = obterGrupoExibicao(a.modalidade);
+        const grupoB = obterGrupoExibicao(b.modalidade);
+        const grupoDiff = grupoA.localeCompare(grupoB, 'pt-BR', { sensitivity: 'base' });
+        if (grupoDiff !== 0) {
+          return grupoDiff;
         }
 
         const anoA = a.ano_licitacao;
@@ -737,6 +779,7 @@ document.addEventListener("DOMContentLoaded", function() {
       inputBusca.addEventListener('input', aplicarFiltros);
       selectStatus.addEventListener('change', aplicarFiltros);
       selectModalidade.addEventListener('change', aplicarFiltros);
+      selectNatureza.addEventListener('change', aplicarFiltros);
       selectAno.addEventListener('change', aplicarFiltros);
       inputDataInicio.addEventListener('change', aplicarFiltros);
       inputDataFim.addEventListener('change', aplicarFiltros);
@@ -753,6 +796,7 @@ document.addEventListener("DOMContentLoaded", function() {
     const buscaText = inputBusca.value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
     const statusSelected = selectStatus.value;
     const modSelected = selectModalidade.value;
+    const naturezaSelected = selectNatureza.value;
     const anoSelected = selectAno.value;
     const dataInicio = inputDataInicio.value; 
     const dataFim = inputDataFim.value;     
@@ -760,17 +804,31 @@ document.addEventListener("DOMContentLoaded", function() {
     licitacoesFiltradas = todasLicitacoesValidas.filter(item => {
       const statusStr = item.status || '';
       const modalidadeStr = item.modalidade || '';
+      const naturezaStr = item.natureza || '';
       
       const tituloCompletoStr = (item.titulo_completo || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
       const objetoStr = (item.objeto || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-      const naturezaStr = (item.natureza || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+      const naturezaNormalizada = naturezaStr.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 
       if (buscaText) {
-        if (!tituloCompletoStr.includes(buscaText) && !objetoStr.includes(buscaText) && !naturezaStr.includes(buscaText)) return false;
+        if (!tituloCompletoStr.includes(buscaText) && !objetoStr.includes(buscaText) && !naturezaNormalizada.includes(buscaText)) return false;
       }
       
       if (statusSelected && statusStr !== statusSelected) return false;
-      if (modSelected && modalidadeStr !== modSelected) return false;
+      
+      // Filtragem por Modalidade: aceita o grupo geral "Pregões" ou modalidades individuais
+      if (modSelected) {
+        const modSelectedNorm = modSelected.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+        const modItemNorm = modalidadeStr.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+
+        if (modSelectedNorm === 'pregoes') {
+          if (!modItemNorm.includes('pregao')) return false;
+        } else if (modalidadeStr !== modSelected) {
+          return false;
+        }
+      }
+
+      if (naturezaSelected && naturezaStr !== naturezaSelected) return false;
       
       if (anoSelected) {
         if (String(item.ano_licitacao) !== String(anoSelected)) return false;
@@ -821,22 +879,20 @@ document.addEventListener("DOMContentLoaded", function() {
       const linkExt = (item.link_externo || '').toString().trim();
       const temLinkExterno = Boolean(linkExt && linkExt !== '#' && linkExt !== '');
 
-      // Grupos visuais por Modalidade + Ano da Licitação
       const anoItem = item.ano_licitacao || 'Geral';
-      const modItem = item.modalidade || 'Outras Modalidades';
-      const chaveGrupo = `${modItem} - ${anoItem}`;
+      const grupoNome = obterGrupoExibicao(item.modalidade);
+      const chaveGrupo = `${grupoNome} - ${anoItem}`;
 
       if (chaveGrupo !== grupoAtual) {
         grupoAtual = chaveGrupo;
         htmlCards += `
           <div class="sesc-grupo-separador">
-            <h4 class="sesc-grupo-titulo">${modItem} <span class="sesc-grupo-ano">(${anoItem})</span></h4>
+            <h4 class="sesc-grupo-titulo">${grupoNome} <span class="sesc-grupo-ano">(${anoItem})</span></h4>
             <div class="sesc-grupo-linha"></div>
           </div>
         `;
       }
 
-      // Linha opcional de Natureza (entre o título e o objeto)
       const htmlNatureza = item.natureza ? `
         <div class="sesc-licitacao-natureza"><strong>Natureza:</strong> ${item.natureza}</div>
       ` : '';
@@ -862,7 +918,6 @@ document.addEventListener("DOMContentLoaded", function() {
         `;
       }
 
-      // Metadados opcionais (Homologação e Última Atualização)
       const htmlHomologacao = item.data_homologacao_formatada ? `
         <div class="sesc-licitacao-meta"><strong>Homologação:</strong> ${item.data_homologacao_formatada}</div>
       ` : '';
@@ -935,6 +990,7 @@ document.addEventListener("DOMContentLoaded", function() {
     inputBusca.value = '';
     selectStatus.value = '';
     selectModalidade.value = '';
+    selectNatureza.value = '';
     selectAno.value = '';
     inputDataInicio.value = '';
     inputDataFim.value = '';
