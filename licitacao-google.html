@@ -647,7 +647,7 @@ document.addEventListener("DOMContentLoaded", function() {
       selectStatus.appendChild(option);
     });
 
-    // Verifica se há pregões na planilha para injetar a opção unificada "Pregões"
+    // Injeta a opção única "Pregões" se existir certame do tipo pregão na planilha
     const existePregao = Array.from(modalidadesSet).some(m => 
       m.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").includes("pregao")
     );
@@ -659,9 +659,9 @@ document.addEventListener("DOMContentLoaded", function() {
       selectModalidade.appendChild(optionPregoes);
     }
 
-    // Modalidades específicas individuais (Pregão Eletrônico, Pregão Presencial, Concorrência, etc.)
+    // Adiciona as outras modalidades (excluindo qualquer tipo individual de pregão do dropdown)
     Array.from(modalidadesSet)
-      .filter(m => m.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim() !== "pregoes")
+      .filter(m => !m.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").includes("pregao"))
       .sort((a, b) => {
         const pA = obterPrioridadeModalidade(a);
         const pB = obterPrioridadeModalidade(b);
@@ -816,7 +816,7 @@ document.addEventListener("DOMContentLoaded", function() {
       
       if (statusSelected && statusStr !== statusSelected) return false;
       
-      // Filtragem por Modalidade: aceita o grupo geral "Pregões" ou modalidades individuais
+      // Filtragem por Modalidade
       if (modSelected) {
         const modSelectedNorm = modSelected.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
         const modItemNorm = modalidadeStr.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
